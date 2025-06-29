@@ -21,6 +21,19 @@ venv
 docs.zip
 archive.zip
 
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.sqlite-journal
+*.sqlite3-journal
+
+# Backup files
+*_backup_*.db
+*_backup_*.sqlite
+*_backup_*.sqlite3
+
 # vim temporary files
 *~
 .*.sw?
