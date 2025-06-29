@@ -22,12 +22,13 @@ import re
 from jose import jwt, JWTError
 import json
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.types import ASGIApp
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # Middleware para rate limiting
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: FastAPI):
+    def __init__(self, app: ASGIApp):
         super().__init__(app)
         self.requests = {}
         self.login_requests = {}
@@ -113,6 +114,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 # Middleware para autenticación
 class AuthMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app: ASGIApp):
+        super().__init__(app)
+        
     async def dispatch(self, request: Request, call_next):
         # Lista de rutas públicas que no requieren autenticación
         public_paths = [

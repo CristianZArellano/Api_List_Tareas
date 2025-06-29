@@ -133,7 +133,7 @@ Incluye todos los campos más el `id`, `usuario_id`, `created_at` y `updated_at`
 
 1. **Clonar el repositorio**
 ```bash
-git clone <url-del-repositorio>
+git clone https://github.com/CristianZArellano/Api_List_Tareas.git
 cd list-Tareas
 ```
 
