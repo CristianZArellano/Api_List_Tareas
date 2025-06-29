@@ -36,7 +36,6 @@ def migrate_database():
         expires_at TIMESTAMP NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         is_revoked BOOLEAN DEFAULT 0,
-        device_info TEXT,
         FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE
     );
     

@@ -91,27 +91,13 @@ def update_last_login(db: Session, usuario: models.Usuario) -> models.Usuario:
 def create_refresh_token(
     db: Session,
     usuario_id: int,
-    token: str,
-    device_info: Optional[str] = None
+    token: str
 ) -> models.RefreshToken:
     """Crea un nuevo refresh token"""
     try:
-        # Revocar tokens antiguos del mismo dispositivo si existen
-        if device_info:
-            old_tokens = db.query(models.RefreshToken).filter(
-                and_(
-                    models.RefreshToken.usuario_id == usuario_id,
-                    models.RefreshToken.device_info == device_info,
-                    models.RefreshToken.is_revoked == False
-                )
-            ).all()
-            for old_token in old_tokens:
-                setattr(old_token, "is_revoked", True)
-            
         db_token = models.RefreshToken(
             token=token,
             usuario_id=usuario_id,
-            device_info=device_info,
             expires_at=datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
         )
         db.add(db_token)
@@ -293,8 +279,7 @@ def update_tarea(db: Session, tarea: models.Tarea, tarea_update: schemas.TareaUp
     for key, value in update_data.items():
         setattr(tarea, key, value)
     
-    # Actualizar timestamp
-    tarea.updated_at = datetime.utcnow()
+    # SQLAlchemy actualizará automáticamente updated_at con onupdate=func.now()
     
     db.commit()
     db.refresh(tarea)

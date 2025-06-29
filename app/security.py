@@ -118,7 +118,7 @@ def authenticate_user(db: Session, email: str, password: str) -> Union[models.Us
         return False
     return user
 
-def create_tokens_for_user(user: models.Usuario) -> Dict[str, str]:
+def create_tokens_for_user(user: models.Usuario) -> Dict[str, Union[str, int]]:
     """Crea tokens de acceso y refresco para un usuario"""
     access_token_data = {
         "sub": str(user.email),
@@ -134,7 +134,8 @@ def create_tokens_for_user(user: models.Usuario) -> Dict[str, str]:
     return {
         "access_token": create_access_token(access_token_data),
         "refresh_token": create_refresh_token(user),
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     }
 
 def verify_task_ownership(db: Session, tarea_id: int, user_id: int) -> bool:
@@ -161,8 +162,8 @@ async def get_current_active_user(
     """
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        email = payload.get("sub")
+        if not isinstance(email, str):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token de acceso inválido",
@@ -185,7 +186,9 @@ async def get_current_active_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
             
-        if not user.is_active:
+        # Verificar si el usuario está activo usando el atributo directamente
+        is_active = getattr(user, 'is_active', False)
+        if not is_active:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Usuario inactivo",
@@ -265,7 +268,7 @@ async def get_current_user_for_tarea(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-def refresh_access_token(refresh_token: str, db: Session) -> Dict[str, str]:
+def refresh_access_token(refresh_token: str, db: Session) -> Dict[str, Union[str, int]]:
     """Refresca el token de acceso usando un token de refresco"""
     try:
         payload = verify_token(refresh_token, settings.REFRESH_SECRET_KEY)

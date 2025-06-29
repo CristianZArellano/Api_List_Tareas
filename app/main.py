@@ -74,7 +74,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 del self.task_requests[ip]
                 
         # Aplicar límites específicos para el endpoint de login
-        if request.url.path == "/login":
+        if request.url.path == "/token":
             if client_ip not in self.login_requests:
                 self.login_requests[client_ip] = []
             self.login_requests[client_ip].append(now)
@@ -118,6 +118,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         public_paths = [
             "/register",
             "/login",
+            "/token",
             "/refresh",
             "/logout",
             "/health",
@@ -297,26 +298,28 @@ def register(usuario: schemas.UsuarioCrear, db: Session = Depends(get_db)):
     return crud.create_usuario(db=db, usuario=usuario)
 
 @app.post(
-    "/login",
+    "/token",
     response_model=schemas.Token,
-    summary="Iniciar sesión y obtener tokens de acceso y refresco",
+    summary="Obtener token de acceso JWT (OAuth2 Password Flow)",
     tags=["Autenticación"]
 )
-def login(
-    response: Response,
-    usuario_credenciales: schemas.UsuarioLogin,
+def login_oauth2(
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
     """
-    Autentica un usuario y retorna tokens JWT de acceso y refresco.
-    
-    - Valida las credenciales del usuario
-    - Genera un token de acceso y un token de refresco
-    - Actualiza la fecha del último login
-    - Retorna los tokens y su información
+    Autenticación estándar OAuth2 Password Flow.
+    Recibe username y password como x-www-form-urlencoded.
     """
-    user = authenticate_user(db, usuario_credenciales.email, usuario_credenciales.password)
-    if not user:
+    user = db.query(models.Usuario).filter(models.Usuario.email == form_data.username).first()
+    is_active = getattr(user, "is_active", False)
+    if not user or not is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email o contraseña incorrectos o usuario inactivo",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if not authenticate_user(db, form_data.username, form_data.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email o contraseña incorrectos",
@@ -328,17 +331,22 @@ def login(
         crud.update_last_login(db, user)
         
         # Crear tokens
-        tokens = create_tokens_for_user(user)
+        access_token = create_access_token(data={"sub": user.email, "type": "access", "user_id": user.id})
+        refresh_token_jwt = create_refresh_token(user)
         
         # Guardar refresh token en la base de datos
         crud.create_refresh_token(
             db=db,
             usuario_id=get_safe_id(user),
-            token=tokens["refresh_token"],
-            device_info=usuario_credenciales.device_info
+            token=refresh_token_jwt
         )
         
-        return tokens
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token_jwt,
+            "token_type": "bearer",
+            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        }
     except Exception as e:
         # Manejar errores de base de datos u otros errores
         db.rollback()
@@ -373,7 +381,7 @@ def refresh_token(
         )
     
     # Obtener usuario y crear nuevos tokens
-    user = crud.get_usuario(db, get_safe_id(db_token))
+    user = crud.get_usuario(db, get_safe_id(db_token.usuario))
     if not user or not bool(user.is_active):
         crud.revoke_refresh_token(db, refresh_token.token)
         raise HTTPException(

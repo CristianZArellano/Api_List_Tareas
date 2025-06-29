@@ -32,12 +32,6 @@ class UsuarioCrear(UsuarioBase):
             )
         return v
 
-class UsuarioLogin(BaseModel):
-    """Esquema para login de usuarios"""
-    email: EmailStr
-    password: str
-    device_info: Optional[str] = None
-
 class Usuario(UsuarioBase):
     """Esquema para respuesta de usuario (sin password)"""
     id: int
@@ -63,7 +57,6 @@ class TokenData(BaseModel):
 class RefreshTokenCreate(BaseModel):
     """Esquema para creación de refresh token"""
     token: str
-    device_info: Optional[str] = None
 
 class RefreshTokenResponse(BaseModel):
     """Esquema para respuesta de refresh token"""
@@ -75,30 +68,75 @@ class RefreshTokenResponse(BaseModel):
 # Esquemas de tareas
 class TareaBase(BaseModel):
     """Esquema base para tareas"""
-    titulo: str = Field(..., min_length=1, max_length=100)
-    descripcion: Optional[str] = Field(None, max_length=500)
-    completado: bool = False
-    prioridad: int = Field(1, ge=1, le=3)
+    titulo: str = Field(..., min_length=1, max_length=100, examples=["Completar proyecto"])
+    descripcion: Optional[str] = Field(None, max_length=500, examples=["Finalizar la implementación del módulo de autenticación"])
+    completado: bool = Field(default=False, examples=[False])
+    prioridad: int = Field(default=1, ge=1, le=3, examples=[1, 2, 3], description="1: Baja, 2: Media, 3: Alta")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "titulo": "Completar proyecto",
+                "descripcion": "Finalizar la implementación del módulo de autenticación",
+                "completado": False,
+                "prioridad": 1
+            }
+        }
+    )
 
 class TareaCreate(TareaBase):
     """Esquema para crear tareas"""
-    pass
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "titulo": "Completar proyecto",
+                "descripcion": "Finalizar la implementación del módulo de autenticación",
+                "completado": False,
+                "prioridad": 1
+            }
+        }
+    )
 
-class TareaUpdate(TareaBase):
+class TareaUpdate(BaseModel):
     """Esquema para actualizar tareas"""
-    titulo: Optional[str] = Field(None, min_length=1, max_length=100)
-    completado: Optional[bool] = None
-    prioridad: Optional[int] = Field(None, ge=1, le=3)
+    titulo: Optional[str] = Field(None, min_length=1, max_length=100, examples=["Completar proyecto actualizado"])
+    descripcion: Optional[str] = Field(None, max_length=500, examples=["Finalizar la implementación del módulo de autenticación"])
+    completado: Optional[bool] = Field(None, examples=[True, False])
+    prioridad: Optional[int] = Field(None, ge=1, le=3, examples=[1, 2, 3], description="1: Baja, 2: Media, 3: Alta")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "titulo": "Completar proyecto actualizado",
+                "descripcion": "Finalizar la implementación del módulo de autenticación",
+                "completado": True,
+                "prioridad": 2
+            }
+        }
+    )
 
 class Tarea(TareaBase):
     """Esquema para respuestas de tareas"""
-    id: int
-    usuario_id: int
+    id: int = Field(examples=[1])
+    usuario_id: int = Field(examples=[1])
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "example": {
+                "id": 1,
+                "titulo": "Completar proyecto",
+                "descripcion": "Finalizar la implementación del módulo de autenticación",
+                "completado": False,
+                "prioridad": 1,
+                "usuario_id": 1,
+                "created_at": "2024-01-01T12:00:00Z",
+                "updated_at": None
+            }
+        }
+    )
 
 class TareaListResponse(BaseModel):
     """Esquema para respuesta de lista de tareas con paginación"""

@@ -27,7 +27,6 @@ class RefreshToken(Base):
     expires_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     is_revoked = Column(Boolean, default=False)
-    device_info = Column(Text, nullable=True)
     
     # Relación con usuario
     usuario_id = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False)
