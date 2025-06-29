@@ -1,14 +1,207 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Response
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app import models, schemas, crud
 from app.database import SessionLocal, engine
+from app.security import (
+    authenticate_user, create_access_token, get_current_active_user,
+    create_refresh_token, create_tokens_for_user, get_user_from_token, get_current_user_for_tarea,
+    verify_task_ownership
+)
+from app.config import settings
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from typing import Optional # Union is not explicitly needed here
+from typing import Optional, Dict, Any
+from datetime import datetime, timedelta
+import time
+from starlette.middleware.base import BaseHTTPMiddleware
+import re
+from jose import jwt, JWTError
+import json
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
-# ---
-# 1. Gestión mejorada del ciclo de vida de la aplicación
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+# Middleware para rate limiting
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app: FastAPI):
+        super().__init__(app)
+        self.requests = {}
+        self.login_requests = {}
+        self.task_requests = {}
+        
+    async def dispatch(self, request: Request, call_next):
+        # Rutas públicas que no requieren rate limiting
+        public_paths = [
+            "/docs",
+            "/openapi.json",
+            "/redoc",
+            "/health",
+            "/invalid-json"  # Para pruebas de manejo de errores
+        ]
+        
+        # Si la ruta es pública, permitir sin rate limiting
+        if request.url.path in public_paths:
+            return await call_next(request)
+            
+        # Obtener IP del cliente de forma segura
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            client_ip = forwarded_for.split(",")[0].strip()
+        else:
+            client_ip = request.client.host if request.client else "unknown"
+            
+        now = time.time()
+        window_start = now - 60  # Ventana de 60 segundos
+        
+        # Limpiar solicitudes antiguas
+        for ip in list(self.requests.keys()):
+            self.requests[ip] = [ts for ts in self.requests[ip] if ts > window_start]
+            if not self.requests[ip]:
+                del self.requests[ip]
+                
+        for ip in list(self.login_requests.keys()):
+            self.login_requests[ip] = [ts for ts in self.login_requests[ip] if ts > window_start]
+            if not self.login_requests[ip]:
+                del self.login_requests[ip]
+                
+        for ip in list(self.task_requests.keys()):
+            self.task_requests[ip] = [ts for ts in self.task_requests[ip] if ts > window_start]
+            if not self.task_requests[ip]:
+                del self.task_requests[ip]
+                
+        # Aplicar límites específicos para el endpoint de login
+        if request.url.path == "/login":
+            if client_ip not in self.login_requests:
+                self.login_requests[client_ip] = []
+            self.login_requests[client_ip].append(now)
+            
+            if len(self.login_requests[client_ip]) > settings.LOGIN_RATE_LIMIT_PER_MINUTE:
+                return JSONResponse(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    content={"detail": "Demasiadas solicitudes"}
+                )
+                
+        # Aplicar límites específicos para endpoints de tareas
+        elif request.url.path.startswith("/tareas"):
+            if client_ip not in self.task_requests:
+                self.task_requests[client_ip] = []
+            self.task_requests[client_ip].append(now)
+            
+            if len(self.task_requests[client_ip]) > settings.TASK_RATE_LIMIT_PER_MINUTE:
+                return JSONResponse(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    content={"detail": "Demasiadas solicitudes"}
+                )
+                
+        # Aplicar límite general para otras rutas
+        else:
+            if client_ip not in self.requests:
+                self.requests[client_ip] = []
+            self.requests[client_ip].append(now)
+            
+            if len(self.requests[client_ip]) > settings.RATE_LIMIT_PER_MINUTE:
+                return JSONResponse(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    content={"detail": "Demasiadas solicitudes"}
+                )
+                
+        return await call_next(request)
+
+# Middleware para autenticación
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Lista de rutas públicas que no requieren autenticación
+        public_paths = [
+            "/register",
+            "/login",
+            "/refresh",
+            "/logout",
+            "/health",
+            "/docs",
+            "/openapi.json",
+            "/redoc",
+            "/invalid-json"  # Para el test de manejo de errores
+        ]
+        
+        # Si la ruta es pública, permitir el acceso sin autenticación
+        if request.url.path in public_paths:
+            return await call_next(request)
+            
+        # Obtener el token del header
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"detail": "No se proporcionó token de acceso"},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            
+        token = auth_header.split(" ")[1]
+        
+        try:
+            # Verificar el token
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            email = str(payload.get("sub", ""))
+            if not email:
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"detail": "Token de acceso inválido"},
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+                
+            token_type = str(payload.get("type", ""))
+            if token_type != "access":
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"detail": "Token de acceso inválido"},
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+                
+            # Obtener el usuario
+            db = SessionLocal()
+            try:
+                user = db.query(models.Usuario).filter(models.Usuario.email == email).first()
+                if not user:
+                    return JSONResponse(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        content={"detail": "Usuario no encontrado"},
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
+                    
+                # Verificar si el usuario está activo usando el atributo directamente
+                is_active = bool(db.query(models.Usuario.is_active).filter(models.Usuario.id == user.id).scalar())
+                if not is_active:
+                    return JSONResponse(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        content={"detail": "Usuario inactivo"},
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
+                
+                # Agregar el usuario a la solicitud
+                request.state.user = user
+                
+                # Continuar con la solicitud
+                response = await call_next(request)
+                return response
+            finally:
+                db.close()
+        except JWTError:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"detail": "Token de acceso inválido"},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        except Exception as e:
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"detail": f"Error en autenticación: {str(e)}"}
+            )
+
+# Gestión del ciclo de vida de la aplicación
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -16,181 +209,409 @@ async def lifespan(app: FastAPI):
     - Crea tablas de la base de datos al inicio.
     - Cierra las conexiones de la base de datos al finalizar.
     """
-    # Crear tablas al iniciar, si no existen
     models.Base.metadata.create_all(bind=engine)
     yield
-    # Cerrar conexiones al finalizar para liberar recursos
     engine.dispose()
 
-app = FastAPI(lifespan=lifespan, title="API de Tareas", version="1.0.0")
-
-# ---
-# 2. Configuración de CORS para comunicación con frontend
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Permite cualquier origen (ajustar para producción)
-    allow_credentials=True, # Permite el envío de cookies y credenciales
-    allow_methods=["*"],  # Permite todos los métodos HTTP (GET, POST, PUT, DELETE, etc.)
-    allow_headers=["*"],  # Permite todos los encabezados en las solicitudes
+app = FastAPI(
+    lifespan=lifespan,
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    description="API de gestión de tareas con autenticación JWT y refresh tokens"
 )
 
-# ---
-# 3. Dependencia de base de datos optimizada
+# Manejadores de excepciones
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Manejador de errores de validación de solicitudes"""
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": [{"loc": err["loc"], "msg": err["msg"], "type": err["type"]} for err in exc.errors()]},
+    )
+
+@app.exception_handler(json.JSONDecodeError)
+async def json_decode_exception_handler(request: Request, exc: json.JSONDecodeError):
+    """Manejador de errores de decodificación JSON"""
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": "JSON inválido"},
+    )
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Manejador de excepciones HTTP"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
+
+# Configurar CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Agregar middlewares en orden
+app.add_middleware(AuthMiddleware)  # Primero autenticación
+app.add_middleware(RateLimitMiddleware)  # Finalmente rate limiting
+
 def get_db():
-    """
-    Proporciona una sesión de base de datos por solicitud.
-    Asegura que la sesión se cierre correctamente después de cada uso.
-    """
+    """Proporciona una sesión de base de datos por solicitud"""
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
-# ---
-# 4. Manejo centralizado de errores para recursos no encontrados
 def handle_not_found(item_name: str):
-    """
-    Levanta una excepción HTTP 404 para indicar que un recurso no fue encontrado.
-    """
+    """Levanta una excepción HTTP 404 para recursos no encontrados"""
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail=f"{item_name.capitalize()} no encontrado(a)"
     )
 
-# ---
-# 5. Crear una tarea
+def get_safe_id(obj: Any) -> int:
+    """Extrae el ID de manera segura de un objeto SQLAlchemy"""
+    return getattr(obj, 'id', 0)
+
+# Endpoints de autenticación
 @app.post(
-    "/tareas",
-    response_model=schemas.Tarea,
+    "/register",
+    response_model=schemas.Usuario,
     status_code=status.HTTP_201_CREATED,
-    summary="Crear nueva tarea en la base de datos",
-    tags=["Tareas"]
+    summary="Registrar un nuevo usuario",
+    tags=["Autenticación"]
 )
-def crear_tarea(tarea: schemas.TareaCrear, db: Session = Depends(get_db)):
+def register(usuario: schemas.UsuarioCrear, db: Session = Depends(get_db)):
     """
-    Crea una nueva tarea con los datos proporcionados.
-    Retorna la tarea creada, incluyendo su ID.
+    Registra un nuevo usuario en el sistema.
+    
+    - Valida el formato del email
+    - Verifica que la contraseña cumpla los requisitos mínimos
+    - Verifica que el username sea único
+    - Retorna los datos del usuario creado (sin contraseña)
     """
-    # El manejo de excepciones específicas de DB ya está en crud.py
-    # Aquí solo necesitamos preocuparnos por el 400 si la validación Pydantic falla,
-    # pero FastAPI ya lo maneja automáticamente.
-    # El `try-except` general aquí podría ocultar errores específicos.
-    # Es mejor dejar que las excepciones de crud.py se propaguen si son HTTPException.
-    return crud.create_tarea(db=db, tarea=tarea)
+    return crud.create_usuario(db=db, usuario=usuario)
 
+@app.post(
+    "/login",
+    response_model=schemas.Token,
+    summary="Iniciar sesión y obtener tokens de acceso y refresco",
+    tags=["Autenticación"]
+)
+def login(
+    response: Response,
+    usuario_credenciales: schemas.UsuarioLogin,
+    db: Session = Depends(get_db)
+):
+    """
+    Autentica un usuario y retorna tokens JWT de acceso y refresco.
+    
+    - Valida las credenciales del usuario
+    - Genera un token de acceso y un token de refresco
+    - Actualiza la fecha del último login
+    - Retorna los tokens y su información
+    """
+    user = authenticate_user(db, usuario_credenciales.email, usuario_credenciales.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email o contraseña incorrectos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    try:
+        # Actualizar último login
+        crud.update_last_login(db, user)
+        
+        # Crear tokens
+        tokens = create_tokens_for_user(user)
+        
+        # Guardar refresh token en la base de datos
+        crud.create_refresh_token(
+            db=db,
+            usuario_id=get_safe_id(user),
+            token=tokens["refresh_token"],
+            device_info=usuario_credenciales.device_info
+        )
+        
+        return tokens
+    except Exception as e:
+        # Manejar errores de base de datos u otros errores
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al procesar el login: {str(e)}"
+        )
 
-# ---
-# 6. Listar tareas
+@app.post(
+    "/refresh",
+    response_model=schemas.RefreshTokenResponse,
+    summary="Refrescar token de acceso usando refresh token",
+    tags=["Autenticación"]
+)
+def refresh_token(
+    refresh_token: schemas.RefreshTokenCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Refresca el token de acceso usando un refresh token válido.
+    
+    - Verifica que el refresh token sea válido y no esté expirado
+    - Genera un nuevo token de acceso
+    - Retorna el nuevo token de acceso junto con el refresh token existente
+    """
+    db_token = crud.get_refresh_token(db, refresh_token.token)
+    if not db_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token de refresco inválido o expirado",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Obtener usuario y crear nuevos tokens
+    user = crud.get_usuario(db, get_safe_id(db_token))
+    if not user or not bool(user.is_active):
+        crud.revoke_refresh_token(db, refresh_token.token)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario no encontrado o inactivo",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return create_tokens_for_user(user)
+
+@app.post(
+    "/logout",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Cerrar sesión y revocar refresh token",
+    tags=["Autenticación"]
+)
+def logout(
+    refresh_token: schemas.RefreshTokenCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Cierra la sesión del usuario y revoca el refresh token.
+    
+    - Revoca el refresh token proporcionado
+    - No afecta a otros dispositivos/sesiones del usuario
+    """
+    crud.revoke_refresh_token(db, refresh_token.token)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@app.post(
+    "/logout/all",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Cerrar todas las sesiones del usuario",
+    tags=["Autenticación"]
+)
+def logout_all(
+    current_user: models.Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cierra todas las sesiones del usuario actual.
+    
+    - Revoca todos los refresh tokens del usuario
+    - Requiere autenticación
+    """
+    crud.revoke_all_user_tokens(db, get_safe_id(current_user))
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@app.get(
+    "/me",
+    response_model=schemas.Usuario,
+    summary="Obtener información del usuario actual",
+    tags=["Autenticación"]
+)
+def read_users_me(current_user: models.Usuario = Depends(get_current_active_user)):
+    """Retorna la información del usuario autenticado actualmente"""
+    return current_user
+
+# Endpoints de tareas
+@app.post("/tareas", response_model=schemas.Tarea, status_code=status.HTTP_201_CREATED)
+async def crear_tarea(
+    tarea: schemas.TareaCreate,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(get_current_active_user)
+):
+    """Crear una nueva tarea"""
+    try:
+        # Convertir el ID del usuario a int de forma segura
+        usuario_id = get_safe_id(current_user)
+        nueva_tarea = crud.create_tarea(db=db, tarea=tarea, usuario_id=usuario_id)
+        return nueva_tarea
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al crear la tarea: {str(e)}"
+        )
+
 @app.get(
     "/tareas",
-    response_model=list[schemas.Tarea],
-    summary="Obtener una lista de todas las tareas existentes",
+    response_model=schemas.TareaListResponse,
+    summary="Listar tareas con filtros y paginación",
     tags=["Tareas"]
 )
 def listar_tareas(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 10,
     completado: Optional[bool] = None,
-    db: Session = Depends(get_db)
+    prioridad: Optional[int] = None,
+    buscar: Optional[str] = None,
+    ordenar_por: str = "created_at",
+    orden: str = "desc",
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(get_current_active_user)
 ):
     """
-    Recupera una lista de tareas.
-    Puedes paginar los resultados usando `skip` y `limit`,
-    y filtrar por el estado de `completado`.
+    Lista las tareas del usuario con filtros y paginación.
+    
+    - Soporta filtrado por estado de completado y prioridad
+    - Soporta búsqueda en título y descripción
+    - Soporta ordenamiento por cualquier campo
+    - Incluye información de paginación
     """
-    return crud.get_tareas(
-        db=db,
-        skip=skip,
-        limit=limit,
-        completado=completado
-    )
+    try:
+        tareas, total = crud.get_tareas(
+            db=db,
+            usuario_id=get_safe_id(current_user),
+            skip=skip,
+            limit=limit,
+            completado=completado,
+            prioridad=prioridad,
+            buscar=buscar,
+            ordenar_por=ordenar_por,
+            orden=orden
+        )
+        
+        # Calcular el número total de páginas
+        total_pages = (total + limit - 1) // limit
+        
+        return {
+            "items": tareas,
+            "total": total,
+            "page": (skip // limit) + 1,
+            "size": limit,
+            "pages": total_pages
+        }
+        
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al listar tareas: {str(e)}"
+        )
 
-# ---
-# 7. Obtener tarea por ID
-@app.get(
-    "/tareas/{tarea_id}",
-    response_model=schemas.Tarea,
-    summary="Obtener los detalles de una tarea específica por su ID",
-    tags=["Tareas"]
-)
-def obtener_tarea(tarea_id: int, db: Session = Depends(get_db)):
-    """
-    Retorna una tarea específica basada en su ID.
-    Lanza un error 404 si la tarea no se encuentra.
-    """
-    if tarea := crud.get_tarea(db=db, tarea_id=tarea_id):
-        return tarea
-    handle_not_found("tarea")
+def get_user_for_tarea(tarea_id: int):
+    """Función auxiliar para obtener el usuario para una tarea específica"""
+    async def get_user(
+        token: str = Depends(oauth2_scheme),
+        db: Session = Depends(get_db)
+    ) -> models.Usuario:
+        return await get_current_user_for_tarea(token=token, db=db, tarea_id=tarea_id)
+    return get_user
 
-# ---
-# 8. Actualizar tarea
-@app.put(
-    "/tareas/{tarea_id}",
-    response_model=schemas.Tarea,
-    summary="Actualizar parcial o totalmente una tarea existente",
-    tags=["Tareas"]
-)
-def actualizar_tarea(
+@app.get("/tareas/{tarea_id}", response_model=schemas.Tarea)
+async def get_tarea(
     tarea_id: int,
-    datos: schemas.TareaActualizar,
-    db: Session = Depends(get_db)
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(get_current_active_user)
 ):
-    """
-    Actualiza una tarea existente identificada por su ID con los datos proporcionados.
-    Los campos no incluidos en la solicitud no serán modificados.
-    Lanza un error 404 si la tarea no se encuentra.
-    """
-    tarea = crud.update_tarea(db=db, tarea_id=tarea_id, datos=datos)
+    """Obtener una tarea por su ID"""
+    # Si la tarea está en el estado de la solicitud, usarla
+    if hasattr(request.state, "tarea"):
+        return request.state.tarea
+        
+    # Si no está en el estado, buscarla en la base de datos
+    usuario_id = get_safe_id(current_user)
+    tarea = crud.get_tarea(db, tarea_id, usuario_id)
     if not tarea:
-        handle_not_found("tarea")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tarea no encontrada"
+        )
     return tarea
 
-# ---
-# 9. Eliminar tarea
-@app.delete(
-    "/tareas/{tarea_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Eliminar una tarea de la base de datos",
-    tags=["Tareas"]
-)
-def eliminar_tarea(tarea_id: int, db: Session = Depends(get_db)):
-    """
-    Elimina una tarea existente por su ID.
-    Retorna un estado 204 No Content en caso de éxito.
-    Lanza un error 404 si la tarea no se encuentra.
-    """
-    # Verificar primero si la tarea existe para dar un 404 claro
-    tarea_existente = crud.get_tarea(db=db, tarea_id=tarea_id)
-    if not tarea_existente:
-        handle_not_found("tarea")
+@app.put("/tareas/{tarea_id}", response_model=schemas.Tarea)
+async def update_tarea(
+    tarea_id: int,
+    tarea_update: schemas.TareaUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(get_current_active_user)
+):
+    """Actualizar una tarea"""
+    # Si la tarea está en el estado de la solicitud, usarla
+    tarea = request.state.tarea if hasattr(request.state, "tarea") else None
+    if not tarea:
+        usuario_id = get_safe_id(current_user)
+        tarea = crud.get_tarea(db, tarea_id, usuario_id)
+        if not tarea:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tarea no encontrada"
+            )
+            
+    # Actualizar la tarea
+    tarea_updated = crud.update_tarea(db, tarea, tarea_update)
+    return tarea_updated
 
-    # Si existe, proceder a eliminarla
-    crud.delete_tarea(db=db, tarea_id=tarea_id)
-    # FastAPI automáticamente retornará 204 si no hay return
-    # después de un `status_code` configurado para 204.
+@app.delete("/tareas/{tarea_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_tarea(
+    tarea_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.Usuario = Depends(get_current_active_user)
+):
+    """Eliminar una tarea"""
+    # Si la tarea está en el estado de la solicitud, usarla
+    tarea = request.state.tarea if hasattr(request.state, "tarea") else None
+    if not tarea:
+        usuario_id = get_safe_id(current_user)
+        tarea = crud.get_tarea(db, tarea_id, usuario_id)
+        if not tarea:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tarea no encontrada"
+            )
+            
+    # Eliminar la tarea
+    crud.delete_tarea(db, tarea)
+    return None
 
-
-# ---
-# 10. Endpoint adicional para estado del servicio
 @app.get(
     "/health",
     status_code=status.HTTP_200_OK,
-    summary="Verificar el estado del servicio y la conexión a la base de datos",
+    summary="Verificar estado del servicio",
     tags=["Sistema"]
 )
 def health_check(db: Session = Depends(get_db)):
     """
-    Verifica que la aplicación esté funcionando y pueda conectarse a la base de datos.
+    Verifica el estado del servicio y la conexión a la base de datos.
+    
+    Retorna:
+    - Estado del servicio
+    - Versión de la API
+    - Estado de la base de datos
+    - Timestamp actual
     """
     try:
-        # Ejecutar una consulta simple para verificar la conexión a la base de datos
-        
+        # Verificar conexión a la base de datos
         db.execute(text("SELECT 1"))
-        return {"status": "ok", "database": "connected"}
+        db_status = "healthy"
     except Exception as e:
-        # En caso de error de conexión a la base de datos
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Error de conexión a la base de datos: {str(e)}"
-        )
+        db_status = f"unhealthy: {str(e)}"
+    
+    return {
+        "status": "ok",
+        "version": settings.APP_VERSION,
+        "database": db_status,
+        "timestamp": datetime.utcnow().isoformat()
+    }
