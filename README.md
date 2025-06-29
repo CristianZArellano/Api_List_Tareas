@@ -483,6 +483,6 @@ Si encuentras algún problema o tienes preguntas:
 
 **¡Disfruta usando la API de Gestión de Tareas! 🎉**
 
-*Última actualización: Enero 2024*
+
 *Tests: 81/81 ✅*
 *Versión: 1.0.0* 
