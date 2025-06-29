@@ -4,6 +4,7 @@ from typing import Optional, List
 from datetime import datetime
 import re
 from app.config import settings
+from app.password_validator import validate_password_strength
 
 # Esquemas de autenticación
 class UsuarioBase(BaseModel):
@@ -20,16 +21,14 @@ class UsuarioBase(BaseModel):
 
 class UsuarioCrear(UsuarioBase):
     """Esquema para creación de usuarios"""
-    password: str = Field(..., min_length=settings.MIN_PASSWORD_LENGTH)
+    password: str = Field(..., min_length=settings.MIN_PASSWORD_LENGTH, max_length=settings.MAX_PASSWORD_LENGTH)
 
     @field_validator('password')
     @classmethod
     def password_validation(cls, v: str) -> str:
-        if not re.match(settings.PASSWORD_REGEX, v):
-            raise ValueError(
-                'La contraseña debe tener al menos 8 caracteres, '
-                'una letra y un número'
-            )
+        is_valid, error_message = validate_password_strength(v)
+        if not is_valid:
+            raise ValueError(error_message)
         return v
 
 class Usuario(UsuarioBase):
@@ -145,3 +144,31 @@ class TareaListResponse(BaseModel):
     page: int
     size: int
     pages: int
+
+class PasswordCheck(BaseModel):
+    """Esquema para validación de contraseña"""
+    password: str
+
+class PasswordValidationResponse(BaseModel):
+    """Respuesta de validación de contraseña"""
+    is_valid: bool
+    error_message: Optional[str] = None
+
+class PasswordRequirements(BaseModel):
+    """Requisitos de contraseña"""
+    min_length: int
+    max_length: int
+    requirements: List[str]
+
+class PasswordStrengthAnalysis(BaseModel):
+    """Análisis de fortaleza de contraseña"""
+    length: int
+    has_uppercase: bool
+    has_lowercase: bool
+    has_digit: bool
+    has_symbol: bool
+    has_spaces: bool
+    has_repeating_chars: bool
+    is_common: bool
+    score: int
+    strength: str

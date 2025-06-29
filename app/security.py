@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import SessionLocal
 from app.config import settings
+from app.password_validator import validate_password, validate_password_strength
 import re
 from fastapi.security import OAuth2PasswordBearer
 import time
@@ -18,8 +19,13 @@ def get_safe_id(obj: Any) -> int:
     """Extrae el ID de manera segura de un objeto SQLAlchemy"""
     return int(getattr(obj, 'id', 0))
 
-# Contexto para hashing de contraseñas
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Contexto para hashing de contraseñas - Configuración segura según estándares OWASP/NIST
+# bcrypt con 12 rounds (recomendado para 2024)
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__rounds=12  # 12 rounds es el estándar recomendado actualmente
+)
 
 # OAuth2 scheme para autenticación
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -51,20 +57,34 @@ def get_db():
         db.close()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verifica si la contraseña en texto plano coincide con el hash"""
+    """
+    Verifica si la contraseña en texto plano coincide con el hash bcrypt.
+    
+    Args:
+        plain_password: Contraseña en texto plano
+        hashed_password: Hash bcrypt almacenado en la base de datos
+        
+    Returns:
+        bool: True si la contraseña coincide, False en caso contrario
+    """
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    """Genera un hash de la contraseña"""
+    """
+    Genera un hash bcrypt seguro de la contraseña.
+    
+    Args:
+        password: Contraseña en texto plano
+        
+    Returns:
+        str: Hash bcrypt con salt y rounds configurados
+        
+    Nota:
+        - Usa bcrypt con 12 rounds (estándar OWASP/NIST 2024)
+        - Incluye salt automático único para cada contraseña
+        - El hash resultante incluye el algoritmo, rounds y salt
+    """
     return pwd_context.hash(password)
-
-def validate_password(password: str) -> bool:
-    """Valida que la contraseña cumpla con los requisitos mínimos"""
-    if len(password) < settings.MIN_PASSWORD_LENGTH:
-        return False
-    if not re.match(settings.PASSWORD_REGEX, password):
-        return False
-    return True
 
 def create_token(data: dict, expires_delta: timedelta, secret_key: str) -> str:
     """Crea un token JWT"""

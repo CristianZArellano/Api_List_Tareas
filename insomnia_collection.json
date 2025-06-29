@@ -1,0 +1,991 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2024-03-19T12:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "req_root",
+      "parentId": "wrk_api_tareas",
+      "modified": 1710720000000,
+      "created": 1710720000000,
+      "url": "{{ _.urls.base_url }}",
+      "name": "🏠 Root",
+      "description": "Endpoint raíz de la API - Verifica que la API esté funcionando",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1710720000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_health",
+      "parentId": "fld_sistema",
+      "modified": 1710720000000,
+      "created": 1710720000000,
+      "url": "{{ _.urls.health_url }}",
+      "name": "🏥 Health Check",
+      "description": "Verificar estado del servicio y conexión a la base de datos",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1710720000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_health_direct",
+      "parentId": "fld_sistema",
+      "modified": 1704067200000,
+      "created": 1704067200000,
+      "url": "http://127.0.0.1:8000/health",
+      "name": "Health Check (URL Directa)",
+      "description": "Verificar estado del servicio con URL directa - Útil para pruebas iniciales",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1704067200000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_register",
+      "parentId": "fld_autenticacion",
+      "modified": 1710720000000,
+      "created": 1710720000000,
+      "url": "{{ _.urls.base_url }}/register",
+      "name": "👤 Registrar Usuario",
+      "description": "Registrar un nuevo usuario en el sistema\n\nRequisitos de contraseña:\n- Mínimo {{ _.min_password_length }} caracteres\n- Máximo {{ _.max_password_length }} caracteres\n- Al menos una letra minúscula\n- Al menos una letra mayúscula\n- Al menos un número\n- Al menos un carácter especial (@$!%*?&)\n- No puede ser una contraseña común\n- No puede contener secuencias (123, abc)\n- No puede tener caracteres repetidos más de 3 veces\n\nRate limit: {{ _.estado.rate_limits.login }} intentos por minuto",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"usuario@ejemplo.com\",\n  \"username\": \"usuario_ejemplo\",\n  \"password\": \"Contraseña123!\",\n  \"nombre_completo\": \"Usuario Ejemplo\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1710720000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_register_invalid_password",
+      "parentId": "fld_autenticacion",
+      "modified": 1704067200000,
+      "created": 1704067200000,
+      "url": "{{ _.base_url }}/register",
+      "name": "Registrar Usuario - Contraseña Inválida",
+      "description": "Ejemplo de registro con contraseña que no cumple los requisitos de seguridad",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"test@ejemplo.com\",\n  \"username\": \"test_user\",\n  \"password\": \"123\",\n  \"nombre_completo\": \"Usuario Test\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704067200000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_login",
+      "parentId": "fld_autenticacion",
+      "modified": 1710720000000,
+      "created": 1710720000000,
+      "url": "{{ _.urls.base_url }}/token",
+      "name": "🔑 Login",
+      "description": "Obtener token de acceso usando OAuth2 Password Flow\n\nRate limit: {{ _.estado.rate_limits.login }} intentos por minuto\nExpiración del token: {{ _.seguridad.token_expiracion }}",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/x-www-form-urlencoded",
+        "params": [
+          {
+            "name": "username",
+            "value": "usuario@ejemplo.com",
+            "description": "Email del usuario"
+          },
+          {
+            "name": "password",
+            "value": "Contraseña123!",
+            "description": "Contraseña del usuario"
+          }
+        ]
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/x-www-form-urlencoded"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1710720000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_refresh",
+      "parentId": "fld_autenticacion",
+      "modified": 1704067200000,
+      "created": 1704067200000,
+      "url": "{{ _.base_url }}/refresh",
+      "name": "Refresh Token",
+      "description": "Refrescar token de acceso usando refresh token",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"token\": \"{{ _.refresh_token }}\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.access_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704067200000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_logout",
+      "parentId": "fld_autenticacion",
+      "modified": 1704067200000,
+      "created": 1704067200000,
+      "url": "{{ _.base_url }}/logout",
+      "name": "Logout",
+      "description": "Cerrar sesión y revocar refresh token",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"token\": \"{{ _.refresh_token }}\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704067200000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_password_requirements",
+      "parentId": "fld_autenticacion",
+      "modified": 1704067200000,
+      "created": 1704067200000,
+      "url": "{{ _.base_url }}/password/requirements",
+      "name": "Obtener Requisitos de Contraseña",
+      "description": "Obtener los requisitos de contraseña para mostrar al usuario en formularios",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1704067200000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_password_check_strength",
+      "parentId": "fld_autenticacion",
+      "modified": 1704067200000,
+      "created": 1704067200000,
+      "url": "{{ _.base_url }}/password/check-strength",
+      "name": "Analizar Fortaleza de Contraseña",
+      "description": "Analiza la fortaleza de una contraseña sin validarla. Útil para feedback en tiempo real.",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"password\": \"Contraseña123!\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704067200000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_password_validate",
+      "parentId": "fld_autenticacion",
+      "modified": 1704067200000,
+      "created": 1704067200000,
+      "url": "{{ _.base_url }}/password/validate",
+      "name": "Validar Contraseña",
+      "description": "Valida una contraseña contra todos los requisitos de seguridad",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"password\": \"Contraseña123!\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704067200000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_password_validate_invalid",
+      "parentId": "fld_autenticacion",
+      "modified": 1704067200000,
+      "created": 1704067200000,
+      "url": "{{ _.base_url }}/password/validate",
+      "name": "Validar Contraseña Inválida",
+      "description": "Ejemplo de validación de contraseña que no cumple los requisitos",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"password\": \"123\"\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704067200000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_logout_all",
+      "parentId": "fld_autenticacion",
+      "modified": 1704067200000,
+      "created": 1704067200000,
+      "url": "{{ _.base_url }}/logout/all",
+      "name": "Logout All",
+      "description": "Cerrar todas las sesiones del usuario",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.access_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704067200000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_me",
+      "parentId": "fld_autenticacion",
+      "modified": 1704067200000,
+      "created": 1704067200000,
+      "url": "{{ _.base_url }}/me",
+      "name": "Obtener Usuario Actual",
+      "description": "Obtener información del usuario autenticado",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.access_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1704067200000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_crear_tarea",
+      "parentId": "fld_tareas",
+      "modified": 1710720000000,
+      "created": 1710720000000,
+      "url": "{{ _.urls.base_url }}/tareas",
+      "name": "📝 Crear Tarea",
+      "description": "Crear una nueva tarea\n\nPrioridades:\n- 1: Baja\n- 2: Media\n- 3: Alta\n\nRate limit: {{ _.estado.rate_limits.tareas }} requests por minuto\nRequiere autenticación con Bearer token",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"titulo\": \"Completar proyecto de API\",\n  \"descripcion\": \"Finalizar la implementación del módulo de autenticación y documentación\",\n  \"prioridad\": 2,\n  \"completado\": false\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.access_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1710720000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_listar_tareas",
+      "parentId": "fld_tareas",
+      "modified": 1710720000000,
+      "created": 1710720000000,
+      "url": "{{ _.urls.base_url }}/tareas",
+      "name": "📋 Listar Tareas",
+      "description": "Listar tareas con filtros y paginación\n\nFiltros disponibles:\n- completado: true/false\n- prioridad: 1-3\n- buscar: texto en título y descripción\n\nOrdenamiento:\n- ordenar_por: created_at, updated_at, titulo, prioridad\n- orden: asc/desc\n\nRate limit: {{ _.estado.rate_limits.tareas }} requests por minuto",
+      "method": "GET",
+      "parameters": [
+        {
+          "name": "skip",
+          "value": "0",
+          "description": "Número de elementos a saltar"
+        },
+        {
+          "name": "limit",
+          "value": "{{ _.limite_registros_default }}",
+          "description": "Número máximo de elementos a retornar"
+        },
+        {
+          "name": "completado",
+          "value": "",
+          "description": "Filtrar por estado (true/false)"
+        },
+        {
+          "name": "prioridad",
+          "value": "",
+          "description": "Filtrar por prioridad (1-3)"
+        },
+        {
+          "name": "buscar",
+          "value": "",
+          "description": "Buscar en título y descripción"
+        },
+        {
+          "name": "ordenar_por",
+          "value": "created_at",
+          "description": "Campo para ordenar"
+        },
+        {
+          "name": "orden",
+          "value": "desc",
+          "description": "Orden (asc/desc)"
+        }
+      ],
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.access_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1710720000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_obtener_tarea",
+      "parentId": "fld_tareas",
+      "modified": 1710720000000,
+      "created": 1710720000000,
+      "url": "{{ _.urls.base_url }}/tareas/{{ _.tarea_id }}",
+      "name": "📄 Obtener Tarea",
+      "description": "Obtener una tarea específica por ID\n\nSolo se pueden obtener tareas del usuario autenticado\nRate limit: {{ _.estado.rate_limits.tareas }} requests por minuto",
+      "method": "GET",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.access_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1710720000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_actualizar_tarea",
+      "parentId": "fld_tareas",
+      "modified": 1710720000000,
+      "created": 1710720000000,
+      "url": "{{ _.urls.base_url }}/tareas/{{ _.tarea_id }}",
+      "name": "✏️ Actualizar Tarea",
+      "description": "Actualizar una tarea existente\n\nSolo se pueden actualizar tareas del usuario autenticado\n\nCampos opcionales:\n- titulo\n- descripcion\n- completado\n- prioridad\n\nRate limit: {{ _.estado.rate_limits.tareas }} requests por minuto",
+      "method": "PUT",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"titulo\": \"Proyecto API completado\",\n  \"descripcion\": \"Módulo de autenticación finalizado y documentación actualizada\",\n  \"completado\": true,\n  \"prioridad\": 1\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.access_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1710720000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_eliminar_tarea",
+      "parentId": "fld_tareas",
+      "modified": 1710720000000,
+      "created": 1710720000000,
+      "url": "{{ _.urls.base_url }}/tareas/{{ _.tarea_id }}",
+      "name": "🗑️ Eliminar Tarea",
+      "description": "Eliminar una tarea\n\nSolo se pueden eliminar tareas del usuario autenticado\nRate limit: {{ _.estado.rate_limits.tareas }} requests por minuto",
+      "method": "DELETE",
+      "headers": [
+        {
+          "name": "Accept",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.access_token }}"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1710720000000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "wrk_api_tareas",
+      "parentId": null,
+      "modified": 1710720000000,
+      "created": 1710720000000,
+      "name": "API Gestión de Tareas",
+      "description": "API RESTful para gestión de tareas con autenticación JWT, validación de contraseñas segura y rate limiting. Soporta caracteres Unicode y múltiples idiomas.\n\nCaracterísticas principales:\n- Autenticación JWT con refresh tokens\n- Validación de contraseñas segura con soporte Unicode\n- Rate limiting por endpoint\n- CRUD completo de tareas\n- Filtrado, paginación y ordenamiento\n- Documentación completa con Swagger/ReDoc",
+      "scope": "collection",
+      "_type": "workspace"
+    },
+    {
+      "_id": "fld_autenticacion",
+      "parentId": "wrk_api_tareas",
+      "modified": 1704067200000,
+      "created": 1704067200000,
+      "name": "🔐 Autenticación",
+      "description": "Endpoints de autenticación, gestión de usuarios y validación de contraseñas",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1704067200000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_tareas",
+      "parentId": "wrk_api_tareas",
+      "modified": 1704067200000,
+      "created": 1704067200000,
+      "name": "📋 Tareas",
+      "description": "Endpoints de gestión de tareas con filtros, paginación y ordenamiento",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1704067200000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_sistema",
+      "parentId": "wrk_api_tareas",
+      "modified": 1704067200000,
+      "created": 1704067200000,
+      "name": "⚙️ Sistema",
+      "description": "Endpoints del sistema y monitoreo",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1704067200000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "env_base",
+      "parentId": "wrk_api_tareas",
+      "modified": 1710720000000,
+      "created": 1710720000000,
+      "name": "Base Environment",
+      "data": {
+        "entorno_activo": "desarrollo",
+        "base_url": "http://127.0.0.1:8000",
+        "access_token": "",
+        "refresh_token": "",
+        "tarea_id": "1",
+        "urls": {
+          "base_url": "http://127.0.0.1:8000",
+          "docs_url": "http://127.0.0.1:8000/docs",
+          "health_url": "http://127.0.0.1:8000/health"
+        },
+        "estado": {
+          "rate_limits": {
+            "general": "200/min",
+            "login": "20/min",
+            "tareas": "100/min"
+          }
+        },
+        "seguridad": {
+          "token_expiracion": "30 minutos"
+        },
+        "limite_registros_default": 10,
+        "min_password_length": 8,
+        "max_password_length": 128
+      },
+      "dataPropertyOrder": {
+        "&": [
+          "entorno_activo",
+          "base_url",
+          "access_token",
+          "refresh_token",
+          "tarea_id",
+          "urls",
+          "estado",
+          "seguridad",
+          "limite_registros_default",
+          "min_password_length",
+          "max_password_length"
+        ]
+      },
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 0,
+      "_type": "environment"
+    },
+    {
+      "_id": "env_global",
+      "parentId": "wrk_api_tareas",
+      "modified": 1710720000000,
+      "created": 1710720000000,
+      "name": "Variables Globales",
+      "data": {
+        "protocolo": "http",
+        "host": "127.0.0.1",
+        "puerto": "8000",
+        "base_url_dev": "http://127.0.0.1:8000",
+        "timeout": 30000,
+        "formato_fecha": "YYYY-MM-DD",
+        "formato_hora": "HH:mm:ss",
+        "zona_horaria": "America/Santiago",
+        "idioma": "es",
+        "encoding": "UTF-8",
+        "max_intentos_reconexion": 3,
+        "delay_entre_intentos": 1000,
+        "headers_comunes": {
+          "Accept": "application/json",
+          "Accept-Language": "es",
+          "X-API-Version": "1.0.0"
+        },
+        "formatos_respuesta": ["json", "xml"],
+        "limite_registros_default": 10,
+        "tiempo_cache": 300,
+        "niveles_log": ["ERROR", "WARN", "INFO", "DEBUG"],
+        "entornos_disponibles": {
+          "desarrollo": {
+            "nombre": "Desarrollo",
+            "descripcion": "Entorno local de desarrollo",
+            "color": "#7d69cb"
+          },
+          "produccion": {
+            "nombre": "Producción",
+            "descripcion": "Entorno de producción",
+            "color": "#e74c3c"
+          }
+        }
+      },
+      "dataPropertyOrder": {
+        "&": [
+          "protocolo",
+          "host",
+          "puerto",
+          "base_url_dev",
+          "timeout",
+          "formato_fecha",
+          "formato_hora",
+          "zona_horaria",
+          "idioma",
+          "encoding",
+          "max_intentos_reconexion",
+          "delay_entre_intentos",
+          "headers_comunes",
+          "formatos_respuesta",
+          "limite_registros_default",
+          "tiempo_cache",
+          "niveles_log",
+          "entornos_disponibles"
+        ]
+      },
+      "color": "#00ff00",
+      "isPrivate": false,
+      "metaSortKey": -1710720000000,
+      "_type": "environment"
+    },
+    {
+      "_id": "env_desarrollo",
+      "parentId": "wrk_api_tareas",
+      "modified": 1710720000000,
+      "created": 1710720000000,
+      "name": "Desarrollo",
+      "data": {
+        "base_url": "http://127.0.0.1:8000",
+        "access_token": "",
+        "refresh_token": "",
+        "tarea_id": "1",
+        "urls": {
+          "base_url": "http://127.0.0.1:8000",
+          "docs_url": "http://127.0.0.1:8000/docs",
+          "health_url": "http://127.0.0.1:8000/health"
+        },
+        "estado": {
+          "rate_limits": {
+            "general": "200/min",
+            "login": "20/min",
+            "tareas": "100/min"
+          }
+        },
+        "seguridad": {
+          "token_expiracion": "30 minutos"
+        },
+        "limite_registros_default": 10,
+        "min_password_length": 8,
+        "max_password_length": 128
+      },
+      "dataPropertyOrder": {
+        "&": [
+          "base_url",
+          "access_token",
+          "refresh_token",
+          "tarea_id",
+          "urls",
+          "estado",
+          "seguridad",
+          "limite_registros_default",
+          "min_password_length",
+          "max_password_length"
+        ]
+      },
+      "color": "#7d69cb",
+      "isPrivate": false,
+      "metaSortKey": -1710720000001,
+      "_type": "environment"
+    },
+    {
+      "_id": "env_produccion",
+      "parentId": "wrk_api_tareas",
+      "modified": 1710720000000,
+      "created": 1710720000000,
+      "name": "Producción",
+      "data": {
+        "base_url": "https://api.example.com",
+        "access_token": "",
+        "refresh_token": "",
+        "tarea_id": "1",
+        "rate_limit_per_minute": 200,
+        "login_rate_limit_per_minute": 20,
+        "task_rate_limit_per_minute": 100,
+        "min_password_length": 8,
+        "max_password_length": 128,
+        "debug": false,
+        "modo_desarrollo": false,
+        "mostrar_errores": false,
+        "log_nivel": "INFO",
+        "cache_activo": true,
+        "timeout_conexion": "{{ _.timeout }}",
+        "cors_habilitado": true,
+        "cors_origins": ["https://example.com"],
+        "cors_methods": ["GET", "POST", "PUT", "DELETE"],
+        "cors_headers": ["Authorization", "Content-Type"],
+        "db_tipo": "postgresql",
+        "db_nombre": "tareas_prod",
+        "db_host": "db.example.com",
+        "db_puerto": "5432",
+        "db_usuario": "app_tareas",
+        "db_timeout": 60,
+        "db_pool_size": 20,
+        "db_pool_recycle": 3600,
+        "jwt_algoritmo": "HS256",
+        "jwt_expiracion_minutos": 15,
+        "refresh_token_dias": 7,
+        "bcrypt_rounds": 12,
+        "entorno": "produccion",
+        "es_entorno_activo": "{{ _.entorno_activo === 'produccion' }}"
+      },
+      "dataPropertyOrder": {
+        "&": [
+          "base_url",
+          "access_token",
+          "refresh_token",
+          "tarea_id",
+          "rate_limit_per_minute",
+          "login_rate_limit_per_minute",
+          "task_rate_limit_per_minute",
+          "min_password_length",
+          "max_password_length",
+          "debug",
+          "modo_desarrollo",
+          "mostrar_errores",
+          "log_nivel",
+          "cache_activo",
+          "timeout_conexion",
+          "cors_habilitado",
+          "cors_origins",
+          "cors_methods",
+          "cors_headers",
+          "db_tipo",
+          "db_nombre",
+          "db_host",
+          "db_puerto",
+          "db_usuario",
+          "db_timeout",
+          "db_pool_size",
+          "db_pool_recycle",
+          "jwt_algoritmo",
+          "jwt_expiracion_minutos",
+          "refresh_token_dias",
+          "bcrypt_rounds",
+          "entorno",
+          "es_entorno_activo"
+        ]
+      },
+      "color": "#e74c3c",
+      "isPrivate": false,
+      "metaSortKey": -1710720000002,
+      "_type": "environment"
+    },
+    {
+      "_id": "env_selector",
+      "parentId": "wrk_api_tareas",
+      "modified": 1710720000000,
+      "created": 1710720000000,
+      "name": "🔄 Selector de Entorno",
+      "data": {
+        "INSTRUCCIONES": "Selecciona este ambiente y cambia 'entorno_seleccionado' a 'desarrollo' o 'produccion'",
+        "entorno_seleccionado": "desarrollo",
+        "urls": {
+          "base_url": "{{ _.entorno_seleccionado === 'desarrollo' ? _.base_url_dev : env_produccion.base_url }}",
+          "docs_url": "{{ _.entorno_seleccionado === 'desarrollo' ? _.base_url_dev + '/docs' : env_produccion.base_url + '/docs' }}",
+          "health_url": "{{ _.entorno_seleccionado === 'desarrollo' ? _.base_url_dev + '/health' : env_produccion.base_url + '/health' }}"
+        },
+        "estado": {
+          "es_desarrollo": "{{ _.entorno_seleccionado === 'desarrollo' }}",
+          "es_produccion": "{{ _.entorno_seleccionado === 'produccion' }}",
+          "debug_activo": "{{ _.entorno_seleccionado === 'desarrollo' ? 'Sí' : 'No' }}",
+          "rate_limits": {
+            "general": "{{ _.entorno_seleccionado === 'desarrollo' ? '200/min' : '100/min' }}",
+            "login": "{{ _.entorno_seleccionado === 'desarrollo' ? '20/min' : '10/min' }}",
+            "tareas": "{{ _.entorno_seleccionado === 'desarrollo' ? '100/min' : '50/min' }}"
+          }
+        },
+        "seguridad": {
+          "cors_enabled": "{{ _.entorno_seleccionado === 'desarrollo' ? 'Todos los orígenes' : 'Solo orígenes específicos' }}",
+          "token_expiracion": "{{ _.entorno_seleccionado === 'desarrollo' ? '30 minutos' : '15 minutos' }}"
+        },
+        "database": {
+          "tipo": "{{ _.entorno_seleccionado === 'desarrollo' ? 'SQLite' : 'PostgreSQL' }}",
+          "nombre": "{{ _.entorno_seleccionado === 'desarrollo' ? 'tareas.db' : 'tareas_prod' }}",
+          "host": "{{ _.entorno_seleccionado === 'desarrollo' ? 'local' : 'db.example.com' }}"
+        }
+      },
+      "dataPropertyOrder": {
+        "&": [
+          "INSTRUCCIONES",
+          "entorno_seleccionado",
+          "urls",
+          "estado",
+          "seguridad",
+          "database"
+        ]
+      },
+      "color": "{{ _.entornos_disponibles[_.entorno_seleccionado].color }}",
+      "isPrivate": false,
+      "metaSortKey": 1710720000001,
+      "_type": "environment"
+    }
+  ]
+} 

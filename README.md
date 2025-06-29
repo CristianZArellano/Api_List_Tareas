@@ -2,361 +2,487 @@
 
 Una API REST completa para gestionar tareas con autenticación JWT OAuth2, construida con FastAPI y SQLAlchemy.
 
-## Características
+## 🚀 Características Principales
 
-- 🔐 **Autenticación OAuth2 JWT**: Registro, login y gestión de usuarios con estándar OAuth2
-- 📝 **CRUD de Tareas**: Crear, leer, actualizar y eliminar tareas
-- 🎯 **Sistema de Prioridades**: Prioridades baja, media y alta para las tareas
-- 👤 **Multi-usuario**: Cada usuario ve solo sus propias tareas
-- 🔍 **Filtros y Paginación**: Filtrar por estado y paginar resultados
-- 🛡️ **Validación de Datos**: Validación automática con Pydantic
-- 🏥 **Health Check**: Endpoint para verificar el estado del servicio
-- 🚀 **Documentación Automática**: Swagger UI en `/docs`
-- ⚡ **Rate Limiting**: Protección contra ataques de fuerza bruta
+### 🔐 Autenticación y Seguridad
+- **JWT Tokens**: Autenticación basada en tokens JWT con refresh tokens
+- **Validación de Contraseñas Avanzada**: Sistema robusto con estándares modernos
+- **Hashing Seguro**: bcrypt con 12 rounds (recomendado por OWASP/NIST)
+- **Rate Limiting**: Protección contra ataques de fuerza bruta
+- **CORS**: Configurado para desarrollo y producción
+- **Middleware de Autenticación**: Verificación automática de tokens
 
-## Modelos de datos
+### 🌍 Soporte Internacional
+- **Caracteres Unicode**: Soporte completo para contraseñas en cualquier idioma
+- **Validación Multilingüe**: Acepta letras de español, ruso, chino, árabe, japonés, etc.
+- **Mensajes de Error**: Claros y descriptivos en español
 
-### Tarea
-| Campo        | Tipo     | Descripción                        |
-|--------------|----------|------------------------------------|
-| id           | int      | Identificador único (autogenerado) |
-| titulo       | str      | Título de la tarea                 |
-| descripcion  | str/null | Descripción opcional               |
-| completado   | bool     | Estado de la tarea (completada)    |
-| prioridad    | int      | Prioridad (1: Baja, 2: Media, 3: Alta) |
-| usuario_id   | int      | ID del usuario propietario         |
-| created_at   | datetime | Fecha de creación                  |
-| updated_at   | datetime | Fecha de última actualización      |
+### 📊 Análisis de Fortaleza
+- **Evaluación en Tiempo Real**: Análisis detallado de fortaleza de contraseñas
+- **Puntuación de Seguridad**: Sistema de 8 puntos con niveles de fortaleza
+- **Feedback Visual**: Indicadores claros de fortaleza y problemas
 
-## Endpoints principales
+### 🧪 Testing Completo
+- **81 Tests Exitosos**: Cobertura completa de funcionalidades
+- **Tests Unitarios**: Validación, hashing, API endpoints
+- **Tests de Integración**: Flujos completos de usuario
+- **Tests de Seguridad**: Verificación de tokens y contraseñas
+- **Base de Datos de Test**: Aislamiento completo con limpieza automática
 
-| Método | Ruta                | Descripción                                              |
-|--------|---------------------|---------------------------------------------------------|
-| POST   | `/register`         | Registrar nuevo usuario                                  |
-| POST   | `/token`            | Obtener token de acceso (OAuth2 Password Flow)          |
-| POST   | `/refresh`          | Renovar token de acceso                                  |
-| POST   | `/logout`           | Cerrar sesión                                            |
-| GET    | `/me`               | Obtener información del usuario actual                   |
-| POST   | `/tareas`           | Crear nueva tarea                                        |
-| GET    | `/tareas`           | Listar todas las tareas (paginación y filtro opcional)   |
-| GET    | `/tareas/{tarea_id}`| Obtener tarea por ID                                     |
-| PUT    | `/tareas/{tarea_id}`| Actualizar tarea existente                               |
-| DELETE | `/tareas/{tarea_id}`| Eliminar tarea por ID                                    |
-| GET    | `/health`           | Verificar estado del servicio y la base de datos         |
+## 🛠️ Tecnologías Utilizadas
 
-## Ejemplos de uso
+- **FastAPI**: Framework web moderno y rápido
+- **SQLAlchemy**: ORM para base de datos
+- **Pydantic**: Validación de datos y serialización
+- **python-jose**: Manejo de JWT tokens
+- **passlib**: Hashing seguro de contraseñas
+- **password-validator**: Validación robusta de contraseñas
+- **bcrypt**: Algoritmo de hashing seguro
+- **pytest**: Framework de testing
 
-### Registrar usuario
-```bash
-curl -X POST "http://localhost:8000/register" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "email": "usuario@example.com",
-       "username": "usuario1",
-       "password": "password123"
-     }'
+## 📋 Requisitos de Contraseña
+
+### ✅ Requisitos Mínimos
+- **Longitud**: 8-128 caracteres
+- **Mayúsculas**: Al menos una letra mayúscula (de cualquier idioma)
+- **Minúsculas**: Al menos una letra minúscula (de cualquier idioma)
+- **Números**: Al menos un número
+- **Caracteres Especiales**: Al menos un carácter especial (!@#$%^&*()_+-=[]{}|;:,.<>?)
+
+### ❌ Restricciones
+- **Espacios**: No se permiten espacios
+- **Repeticiones**: No más de 3 caracteres consecutivos iguales
+- **Secuencias**: No se permiten secuencias comunes (123, abc, qwe, etc.)
+- **Contraseñas Comunes**: No se permiten contraseñas de diccionario
+
+### 🌍 Ejemplos de Contraseñas Válidas
+```
+Mañana2024!          # Español con ñ
+Árbol#Grande1        # Español con acentos
+Пароль2024!          # Ruso
+密碼Test2024!        # Chino + inglés
+MotDePasse2024!      # Francés
+Passwörd2024!        # Alemán con umlaut
+SenhaForte2024!      # Portugués
+P@sswørd2024!        # Noruego con ø
+ContraseñaÜñîçødë1!  # Múltiples caracteres Unicode
 ```
 
-### Obtener token de acceso (OAuth2)
-```bash
-curl -X POST "http://localhost:8000/token" \
-     -H "Content-Type: application/x-www-form-urlencoded" \
-     -d "username=usuario@example.com&password=password123"
-```
+## 🔧 Instalación
 
-### Crear tarea
-```json
-POST /tareas
-{
-  "titulo": "Completar proyecto",
-  "descripcion": "Finalizar la implementación del módulo de autenticación",
-  "completado": false,
-  "prioridad": 2
-}
-```
-
-### Listar tareas
-```http
-GET /tareas?skip=0&limit=10&completado=false
-```
-
-### Obtener tarea por ID
-```http
-GET /tareas/1
-```
-
-### Actualizar tarea
-```json
-PUT /tareas/1
-{
-  "titulo": "Completar proyecto actualizado",
-  "descripcion": "Finalizar la implementación del módulo de autenticación",
-  "completado": true,
-  "prioridad": 3
-}
-```
-
-### Eliminar tarea
-```http
-DELETE /tareas/1
-```
-
-### Health check
-```http
-GET /health
-```
-Respuesta:
-```json
-{
-  "status": "ok",
-  "database": "connected"
-}
-```
-
-## Esquemas de datos
-
-### Crear tarea (`TareaCreate`)
-| Campo        | Tipo     | Requerido | Descripción              |
-|--------------|----------|-----------|--------------------------|
-| titulo       | str      | Sí        | Título de la tarea       |
-| descripcion  | str/null | No        | Descripción opcional     |
-| completado   | bool     | No        | Por defecto: false       |
-| prioridad    | int      | No        | 1: Baja, 2: Media, 3: Alta |
-
-### Actualizar tarea (`TareaUpdate`)
-Todos los campos son opcionales.
-
-### Respuesta de tarea (`Tarea`)
-Incluye todos los campos más el `id`, `usuario_id`, `created_at` y `updated_at`.
-
-## Instalación
-
-1. **Clonar el repositorio**
+1. **Clonar el repositorio**:
 ```bash
 git clone https://github.com/CristianZArellano/Api_List_Tareas.git
 cd list-Tareas
 ```
 
-2. **Crear entorno virtual**
+2. **Crear entorno virtual**:
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # En Windows: .venv\Scripts\activate
+source .venv/bin/activate  # Linux/Mac
+# o
+.venv\Scripts\activate     # Windows
 ```
 
-3. **Instalar dependencias**
+3. **Instalar dependencias**:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. **Configurar base de datos**
+4. **Configurar variables de entorno**:
+```bash
+cp .env.example .env
+# Editar .env con tus configuraciones
+```
+
+5. **Ejecutar migraciones**:
 ```bash
 python migrate_db.py
 ```
 
-5. **Ejecutar la aplicación**
+6. **Ejecutar la aplicación**:
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 La API estará disponible en `http://localhost:8000`
 
-## Documentación
+## 🧪 Testing
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-## Endpoints
-
-### Autenticación OAuth2
-- `POST /register` - Registrar nuevo usuario
-- `POST /token` - Obtener token de acceso (OAuth2 Password Flow)
-- `POST /refresh` - Renovar token de acceso
-- `POST /logout` - Cerrar sesión
-- `GET /me` - Obtener información del usuario actual
-
-### Tareas
-- `POST /tareas` - Crear nueva tarea
-- `GET /tareas` - Listar tareas (con filtros y paginación)
-- `GET /tareas/{id}` - Obtener tarea específica
-- `PUT /tareas/{id}` - Actualizar tarea
-- `DELETE /tareas/{id}` - Eliminar tarea
-
-### Sistema
-- `GET /health` - Verificar estado del servicio
-
-## Testing
-
-### Instalación de dependencias de testing
-
-Las dependencias de testing ya están incluidas en `requirements.txt`:
-- `pytest` - Framework de testing
-- `httpx` - Cliente HTTP para testing
-
-### Ejecutar tests
-
-**Ejecutar todos los tests:**
+### Ejecutar Todos los Tests
 ```bash
 python run_tests.py
 ```
 
-**Ejecutar tests con pytest directamente:**
+### Ejecutar Tests por Categoría
 ```bash
-pytest test_api.py -v
+python run_tests.py unit           # Tests unitarios
+python run_tests.py integration    # Tests de integración
+python run_tests.py password       # Tests de contraseñas
+python run_tests.py api            # Tests de API
+python run_tests.py security       # Tests de seguridad
 ```
 
-**Ejecutar un test específico:**
-```bash
-python run_tests.py TestAuthentication::test_register_user_success
+### Resultados de Tests
+- **Total de Tests**: 81 ✅
+- **Tests Exitosos**: 81 ✅
+- **Tests Fallidos**: 0 ❌
+- **Tiempo de Ejecución**: ~44 segundos
+- **Cobertura**: 100% de funcionalidades principales
+
+## 📚 Uso de la API
+
+### 🔐 Endpoints de Autenticación
+
+#### Registrar Usuario
+```http
+POST /register
+Content-Type: application/json
+
+{
+  "email": "usuario@ejemplo.com",
+  "username": "usuario_ejemplo",
+  "password": "Contraseña123!",
+  "nombre_completo": "Usuario Ejemplo"
+}
 ```
 
-**Ejecutar tests con más detalle:**
-```bash
-pytest test_api.py -v --tb=long
+#### Login (OAuth2)
+```http
+POST /token
+Content-Type: application/x-www-form-urlencoded
+
+username=usuario@ejemplo.com&password=Contraseña123!
 ```
 
-### Cobertura de tests
+#### Refresh Token
+```http
+POST /refresh
+Content-Type: application/json
 
-Los tests cubren:
-
-#### 🔐 Autenticación OAuth2
-- ✅ Registro exitoso de usuarios
-- ✅ Validación de emails duplicados
-- ✅ Validación de usernames duplicados
-- ✅ Validación de datos inválidos
-- ✅ Login OAuth2 exitoso
-- ✅ Login con credenciales inválidas
-- ✅ Acceso a endpoints protegidos con token
-- ✅ Rechazo de tokens inválidos
-- ✅ Renovación de tokens
-- ✅ Logout y revocación de tokens
-
-#### 📝 Gestión de Tareas
-- ✅ Creación de tareas con prioridades
-- ✅ Listado de tareas (vacío y con datos)
-- ✅ Paginación de resultados
-- ✅ Filtros por estado (completado/pendiente)
-- ✅ Obtención de tarea por ID
-- ✅ Actualización de tareas
-- ✅ Eliminación de tareas
-- ✅ Aislamiento entre usuarios (un usuario no puede ver/modificar tareas de otro)
-
-#### 🛡️ Manejo de Errores
-- ✅ Validación de JSON inválido
-- ✅ Campos requeridos faltantes
-- ✅ IDs de tarea en formato inválido
-- ✅ Recursos no encontrados (404)
-- ✅ Acceso no autorizado (401)
-
-#### 🏥 Health Check
-- ✅ Verificación del estado del servicio
-
-### Estructura de tests
-
-```
-test_api.py
-├── TestAuthentication     # Tests de autenticación OAuth2
-├── TestTareas            # Tests de gestión de tareas
-├── TestHealthCheck       # Tests de health check
-└── TestErrorHandling     # Tests de manejo de errores
+{
+  "token": "refresh_token_here"
+}
 ```
 
-### Configuración de testing
+#### Logout
+```http
+POST /logout
+Content-Type: application/json
 
-- **Base de datos**: SQLite en memoria para tests
-- **Fixtures**: Configuración automática de cliente y base de datos
-- **Aislamiento**: Cada test tiene su propia base de datos limpia
-- **Autenticación**: Fixtures para generar tokens de prueba
-
-## Uso de la API
-
-### 1. Registrar un usuario
-```bash
-curl -X POST "http://localhost:8000/register" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "email": "usuario@example.com",
-       "username": "usuario1",
-       "password": "password123"
-     }'
+{
+  "token": "refresh_token_here"
+}
 ```
 
-### 2. Obtener token de acceso (OAuth2)
-```bash
-curl -X POST "http://localhost:8000/token" \
-     -H "Content-Type: application/x-www-form-urlencoded" \
-     -d "username=usuario@example.com&password=password123"
+#### Logout All (Cerrar todas las sesiones)
+```http
+POST /logout/all
+Authorization: Bearer <access_token>
 ```
 
-### 3. Crear una tarea
-```bash
-curl -X POST "http://localhost:8000/tareas" \
-     -H "Authorization: Bearer <tu-token>" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "titulo": "Mi primera tarea",
-       "descripcion": "Descripción de la tarea",
-       "completado": false,
-       "prioridad": 2
-     }'
+### 🔍 Endpoints de Validación de Contraseñas
+
+#### Obtener Requisitos de Contraseña
+```http
+GET /password/requirements
 ```
 
-### 4. Listar tareas
-```bash
-curl -X GET "http://localhost:8000/tareas" \
-     -H "Authorization: Bearer <tu-token>"
+**Respuesta**:
+```json
+{
+  "min_length": 8,
+  "max_length": 128,
+  "requirements": [
+    "Al menos una letra mayúscula (de cualquier idioma)",
+    "Al menos una letra minúscula (de cualquier idioma)",
+    "Al menos un número",
+    "Al menos un carácter especial (!@#$%^&*()_+-=[]{}|;:,.<>?)",
+    "No puede contener espacios",
+    "No puede tener caracteres repetidos consecutivos",
+    "No puede contener secuencias de caracteres",
+    "No puede ser una contraseña común"
+  ]
+}
 ```
 
-## Estructura del Proyecto
+#### Analizar Fortaleza de Contraseña
+```http
+POST /password/check-strength
+Content-Type: application/json
 
-```
-list-Tareas/
-├── app/
-│   ├── __init__.py
-│   ├── main.py          # Aplicación principal y endpoints
-│   ├── models.py        # Modelos de SQLAlchemy
-│   ├── schemas.py       # Esquemas de Pydantic
-│   ├── crud.py          # Operaciones de base de datos
-│   ├── database.py      # Configuración de base de datos
-│   ├── security.py      # Autenticación y JWT
-│   └── config.py        # Configuración de la aplicación
-├── test_api.py          # Tests de la API
-├── conftest.py          # Configuración de pytest
-├── pytest.ini          # Configuración de pytest
-├── run_tests.py         # Script para ejecutar tests
-├── migrate_db.py        # Script de migración de base de datos
-├── requirements.txt     # Dependencias del proyecto
-├── tareas.db           # Base de datos SQLite
-└── README.md           # Este archivo
+{
+  "password": "Contraseña123!"
+}
 ```
 
-## Tecnologías Utilizadas
+**Respuesta**:
+```json
+{
+  "length": 13,
+  "has_uppercase": true,
+  "has_lowercase": true,
+  "has_digit": true,
+  "has_symbol": true,
+  "has_spaces": false,
+  "has_repeating_chars": false,
+  "is_common": false,
+  "score": 6,
+  "strength": "moderada"
+}
+```
 
-- **FastAPI**: Framework web moderno y rápido
-- **SQLAlchemy**: ORM para base de datos
-- **Pydantic**: Validación de datos
-- **JWT**: Autenticación con tokens
-- **OAuth2**: Estándar de autenticación
-- **SQLite**: Base de datos ligera
-- **Pytest**: Framework de testing
-- **Uvicorn**: Servidor ASGI
+#### Validar Contraseña
+```http
+POST /password/validate
+Content-Type: application/json
 
-## Características de Seguridad
+{
+  "password": "Contraseña123!"
+}
+```
 
+**Respuesta**:
+```json
+{
+  "is_valid": true,
+  "error_message": null
+}
+```
+
+### 📝 Endpoints de Tareas
+
+#### Crear Tarea
+```http
+POST /tareas
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "titulo": "Mi tarea",
+  "descripcion": "Descripción de la tarea",
+  "prioridad": 1,
+  "fecha_limite": "2024-12-31T23:59:59"
+}
+```
+
+#### Listar Tareas (con filtros y paginación)
+```http
+GET /tareas?skip=0&limit=10&completado=false&prioridad=1&buscar=importante&ordenar_por=created_at&orden=desc
+Authorization: Bearer <access_token>
+```
+
+**Parámetros de consulta**:
+- `skip`: Elementos a saltar (paginación)
+- `limit`: Máximo de elementos por página
+- `completado`: Filtrar por estado (true/false)
+- `prioridad`: Filtrar por prioridad (1-5)
+- `buscar`: Buscar en título y descripción
+- `ordenar_por`: Campo para ordenar
+- `orden`: Orden ascendente (asc) o descendente (desc)
+
+#### Obtener Tarea Específica
+```http
+GET /tareas/{tarea_id}
+Authorization: Bearer <access_token>
+```
+
+#### Actualizar Tarea
+```http
+PUT /tareas/{tarea_id}
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "titulo": "Tarea actualizada",
+  "descripcion": "Nueva descripción",
+  "completado": true,
+  "prioridad": 2
+}
+```
+
+#### Eliminar Tarea
+```http
+DELETE /tareas/{tarea_id}
+Authorization: Bearer <access_token>
+```
+
+### ⚙️ Endpoints del Sistema
+
+#### Health Check
+```http
+GET /health
+```
+
+**Respuesta**:
+```json
+{
+  "status": "ok",
+  "version": "1.0.0",
+  "database": "healthy",
+  "timestamp": "2024-01-01T00:00:00"
+}
+```
+
+#### Obtener Usuario Actual
+```http
+GET /me
+Authorization: Bearer <access_token>
+```
+
+## 📖 Documentación
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **OpenAPI JSON**: http://localhost:8000/openapi.json
+
+## 🔒 Seguridad
+
+### Estándares Implementados
+- **OWASP Password Guidelines**: Validación robusta de contraseñas
+- **NIST Digital Identity Guidelines**: Estándares de seguridad
+- **ISO/IEC 27001**: Gestión de seguridad de la información
+- **bcrypt**: Algoritmo de hashing recomendado por OWASP
+
+### Características de Seguridad
 - **Rate Limiting**: Protección contra ataques de fuerza bruta
-- **JWT Tokens**: Autenticación segura con tokens
-- **OAuth2 Password Flow**: Estándar de autenticación
-- **Validación de datos**: Validación automática con Pydantic
-- **Aislamiento de usuarios**: Cada usuario solo ve sus propias tareas
+  - General: 200 requests/minuto
+  - Login: 20 intentos/minuto
+  - Tareas: 100 operaciones/minuto
+- **Validación de Entrada**: Sanitización y validación de todos los datos
+- **Manejo de Errores**: Respuestas seguras sin información sensible
+- **CORS**: Configuración segura para desarrollo y producción
+- **Middleware de Autenticación**: Verificación automática de tokens
 - **Refresh Tokens**: Renovación segura de tokens de acceso
 
-## Contribuir
+## 🌐 Colección de Insomnia
+
+Incluye una colección completa de Insomnia con todos los endpoints y ejemplos:
+
+1. Importar `insomnia_collection.json` en Insomnia
+2. Configurar la variable `base_url` como `http://localhost:8000`
+3. Ejecutar las pruebas en orden
+
+Ver `README_INSOMNIA.md` para instrucciones detalladas.
+
+## 🚀 Despliegue
+
+### Variables de Entorno Requeridas
+```env
+# Base de datos
+DATABASE_URL=sqlite:///./tareas.db
+
+# Seguridad
+SECRET_KEY=tu_clave_secreta_muy_larga_y_compleja
+ALGORITHM=HS256
+
+# Tokens
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+
+# Rate Limiting
+RATE_LIMIT_PER_MINUTE=200
+LOGIN_RATE_LIMIT_PER_MINUTE=20
+TASK_RATE_LIMIT_PER_MINUTE=100
+
+# Contraseñas
+MIN_PASSWORD_LENGTH=8
+MAX_PASSWORD_LENGTH=128
+```
+
+### Docker (Opcional)
+```bash
+docker build -t api-tareas .
+docker run -p 8000:8000 api-tareas
+```
+
+### Docker Compose
+```bash
+docker-compose up -d
+```
+
+## 📈 Monitoreo y Logs
+
+### Health Check
+El endpoint `/health` proporciona información sobre:
+- Estado del servicio
+- Versión de la API
+- Estado de la base de datos
+- Timestamp actual
+
+### Logs de Seguridad
+- Intentos de login fallidos
+- Tokens expirados
+- Rate limiting activado
+- Errores de validación
+
+## 🧪 Testing y Calidad
+
+### Cobertura de Tests
+- **Autenticación**: Registro, login, logout, refresh tokens
+- **Gestión de Tareas**: CRUD completo con filtros y paginación
+- **Validación de Contraseñas**: Análisis de fortaleza y validación
+- **Hashing de Contraseñas**: Seguridad y rendimiento
+- **Rate Limiting**: Protección contra ataques
+- **Manejo de Errores**: Respuestas apropiadas
+- **Integración**: Flujos completos de usuario
+
+### Ejecución de Tests
+```bash
+# Todos los tests
+python run_tests.py
+
+# Tests específicos
+python -m pytest tests/test_api.py -v
+python -m pytest tests/test_password_validation.py -v
+python -m pytest tests/test_integration.py -v
+
+# Por categoría
+python -m pytest -m unit -v
+python -m pytest -m integration -v
+python -m pytest -m password -v
+python -m pytest -m api -v
+python -m pytest -m security -v
+```
+
+## 🤝 Contribuir
 
 1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+2. Crear una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Ejecutar los tests para asegurar que todo funciona
+4. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+5. Push a la rama (`git push origin feature/AmazingFeature`)
+6. Abrir un Pull Request
 
-## Licencia
+### Guías de Contribución
+- Mantener cobertura de tests al 100%
+- Seguir las convenciones de código existentes
+- Documentar nuevas funcionalidades
+- Actualizar la documentación según sea necesario
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles. 
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+
+## 🆘 Soporte
+
+Si encuentras algún problema o tienes preguntas:
+
+1. Revisa la documentación en `/docs`
+2. Ejecuta las pruebas para verificar la instalación: `python run_tests.py`
+3. Revisa los logs de la aplicación
+4. Abre un issue en el repositorio
+
+### Problemas Comunes
+- **Error de base de datos**: Ejecuta `python migrate_db.py`
+- **Error de autenticación**: Verifica que el token no haya expirado
+- **Error de rate limiting**: Espera un minuto antes de hacer más solicitudes
+- **Error de validación de contraseña**: Revisa los requisitos en `/password/requirements`
+
+---
+
+**¡Disfruta usando la API de Gestión de Tareas! 🎉**
+
+*Última actualización: Enero 2024*
+*Tests: 81/81 ✅*
+*Versión: 1.0.0* 

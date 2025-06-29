@@ -129,7 +129,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/docs",
             "/openapi.json",
             "/redoc",
-            "/invalid-json"  # Para el test de manejo de errores
+            "/invalid-json",  # Para el test de manejo de errores
+            "/password/requirements",
+            "/password/check-strength",
+            "/password/validate"
         ]
         
         # Si la ruta es pública, permitir el acceso sin autenticación
@@ -626,4 +629,65 @@ def health_check(db: Session = Depends(get_db)):
         "version": settings.APP_VERSION,
         "database": db_status,
         "timestamp": datetime.utcnow().isoformat()
+    }
+
+@app.get(
+    "/password/requirements",
+    response_model=schemas.PasswordRequirements,
+    summary="Obtener requisitos de contraseña",
+    tags=["Autenticación"]
+)
+def get_password_requirements():
+    """
+    Retorna los requisitos de contraseña para mostrar al usuario.
+    
+    Útil para formularios de registro y cambio de contraseña.
+    """
+    from app.password_validator import get_password_requirements
+    return get_password_requirements()
+
+@app.post(
+    "/password/check-strength",
+    response_model=schemas.PasswordStrengthAnalysis,
+    summary="Analizar fortaleza de contraseña",
+    tags=["Autenticación"]
+)
+def check_password_strength(password_data: schemas.PasswordCheck):
+    """
+    Analiza la fortaleza de una contraseña sin validarla.
+    
+    Útil para mostrar feedback en tiempo real al usuario.
+    
+    Args:
+        password_data: Datos de la contraseña a analizar
+        
+    Returns:
+        dict: Análisis detallado de la fortaleza
+    """
+    from app.password_validator import check_password_strength
+    return check_password_strength(password_data.password)
+
+@app.post(
+    "/password/validate",
+    response_model=schemas.PasswordValidationResponse,
+    summary="Validar contraseña",
+    tags=["Autenticación"]
+)
+def validate_password(password_data: schemas.PasswordCheck):
+    """
+    Valida una contraseña contra todos los requisitos de seguridad.
+    
+    Args:
+        password_data: Datos de la contraseña a validar
+        
+    Returns:
+        dict: Resultado de la validación con mensajes de error
+    """
+    from app.password_validator import validate_password_strength
+    
+    is_valid, error_message = validate_password_strength(password_data.password)
+    
+    return {
+        "is_valid": is_valid,
+        "error_message": error_message if not is_valid else None
     }
